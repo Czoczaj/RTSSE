@@ -1,6 +1,6 @@
 const exampleScore = {
-  nick: "Ojej",
-  points: 100,
+  nick: 'jakiś menel',
+  points: 1,
   lastest:true
 }
 
@@ -24,15 +24,31 @@ function log(txt){
 }
 
 function addScore(score){
-  // sprawdź czy podano liczbę pkt.
-  // sprawdź czy wynik kwalifikuje się do tabeli
+  if(score.points === NaN){
+    log ('big czangas nie lubi');
+    return;}
+    if(scores.length >= limit){
+      if(scores[scores.length -1].points >= score.points){
+        log('soczyste bekniecie');
+        return;
+        
+      }
+    }
+  if(!score.nick){score.nick = 'big chungus'}
+  scores.push(score);
+  scores.sort((a,b) => b.points - a.points)
+
   // zagwarantuj że ustawiono nick
   // zaktualizuj tablicę
   // powiedz wszystkim że zmieniły się wyniki
   // log
+  log(JSON.stringify(score));
+  scores = scores.slice(0,limit);
+  io.emit('update',scores);
+  log(`chungus zjadl ${score.nick}`)
 } 
 
-
+scores = [exampleScore];
 app.use((req, res, next) => {
   res.append('Access-Control-Allow-Origin', ['*']);
   res.append('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
@@ -41,12 +57,21 @@ app.use((req, res, next) => {
 });
 app.use(bodyParser.json())
 
-app.get('/highscores', (req, res) => {
+app.get('/ugaBuga', (req, res) => {
   // send scores
-  res.json({})
+  res.text('lol');
+})
+function abc(req,res){
+  res.send('owca,owca');
+}
+app.get('/highscores', (req, res) => {
+  log('uganda eeee');
+  res.json(scores);
 })
 app.post('/highscores', (req, res) => {
-  // add score
+  var newScore = req.body;
+  newScore.points = Number(newScore.points);
+  addScore(newScore);
   res.json({});
 })
 app.post('/limit', (req, res) => {
