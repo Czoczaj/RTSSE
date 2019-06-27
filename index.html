@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<title>Whack A Mole!</title>
+	<link href='https://fonts.googleapis.com/css?family=Amatic+SC:400,700' rel='stylesheet' type='text/css'>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js"></script>
+	<style>
+		*{
+  			box-sizing: border-box;
+		}
+		body {
+			padding: 0;
+			margin: 0;
+			display: flex;
+			flex-direction: row;
+			font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif
+		}
+
+		#logs {
+			height: 100vh;
+			width: 40vw;
+			display: flex;
+			flex-direction: column;
+			border-left: 1px solid black;
+			font-family: monospace;
+			overflow-y: scroll;
+		}
+		.log{
+			width:100%;
+			font-size: 1.1rem;
+			padding: 10px;
+			border: 1px solid black;
+		}
+		#guide{
+			height: 100vh;
+			width: 60vw;
+		}
+
+		.container{
+			max-width: 600px;
+			margin-left: auto;
+			margin-right: auto;
+		}
+	</style>
+</head>
+
+<body>
+	<section id="guide">
+		<div class="container">
+			<div class="box">
+				<div class="row">
+					<h3>Scores:</h3>
+				</div>
+				<div class="row">
+					<div id="scores">
+
+					</div>
+				</div>
+				<div class="row">
+					<button type="button" id="refresh">Refresh</button>
+				</div>
+			</div>
+			<div class="box">
+				<div class="row">
+					<h3>Add score:</h3>
+				</div>
+				<div class="row">
+					<input type="number" name="" id="points">
+					<input type="text" name="" id="nick">
+					<button type="button" id="addScore">Add score</button>
+				</div>
+			</div>
+			<div class="box">
+				<div class="row">
+					<h3>Limit:</h3>
+				</div>
+				<div class="row">
+					<input type="number" name="" id="limit">
+					<button type="button" id="setLimit">Set limit</button>
+				</div>
+			</div>
+			<div class="box">
+				<div class="row">
+					<h3>Clear:</h3>
+				</div>
+				<div class="row">
+					<button type="button" id="deleteAll">Clear scoreboard</button>
+				</div>
+			</div>
+			<div class="box">
+				<div class="row">
+					<h3>Access Key:</h3>
+				</div>
+				<div class="row">
+					<input type="password" name="" id="apikey">
+				</div>
+			</div>
+		</div>
+	</section>
+	<section id="logs">
+	</section>
+	<script> 
+		// networking
+		const api = "http://localhost:5555/"
+		const socket = io.connect(api);
+		const logs = document.querySelector("#logs");
+		function log(txt){
+			console.log(txt)
+			logs.innerHTML += `<div class="log">${txt}</div>`
+			logs.scrollTop = logs.scrollHeight;
+		}
+		async function extract (response){
+			const resp = await response;
+			const payload = await resp.text();
+			let result;
+			try {
+				result = JSON.parse(payload)
+			} catch (error) {
+				result = payload;
+			}
+			if(typeof result === "undefined") result = {};
+			return result;
+		}
+		async function load(uri,method,payload){
+			if(typeof payload !== "string") payload = JSON.stringify(payload);
+			let options = {name:"GET"};
+			if(method ) options.method = method;
+			if(payload) {
+				options.body = payload;
+				options.headers = { 'Content-Type': 'application/json' };
+			}
+			const req = new Request(api+uri, options);
+			console.log(payload)
+			return await extract(fetch(req))
+		}
+		async function get(uri){
+			return await load(uri,"GET");
+		}
+		async function _delete(uri,payload){
+			return await load(uri,"DELETE",payload);
+		}
+		async function post(uri,payload){
+			return await load(uri,"POST",payload);
+		}
+		socket.on('log', payload => log(payload))
+	</script>
+	<script>
+	const apikey = document.querySelector("#apikey");
+	function getKey(){
+		return apikey.value;
+	}
+	const limit = document.querySelector("#limit");
+	function getLimit(){
+		return limit.value;
+	}
+	function deleteAll(){
+		_delete("highscores",{key:getKey()})
+	}
+	document.querySelector("#deleteAll").addEventListener("click",deleteAll);
+	function setLimit(){
+		post("limit",{newLimit:getLimit(),key:getKey()})
+	}
+	document.querySelector("#setLimit").addEventListener("click",setLimit);
+	const points = document.querySelector("#points");
+	const nick = document.querySelector("#nick");
+	function addScore(){
+		post("highscores",{points:points.value,nick:nick.value})
+	}
+	document.querySelector("#addScore").addEventListener("click",addScore);
+
+	const scoreshook = document.querySelector("#scores");
+
+	function buildScores(scores){
+		return scores.map(score => `<div class="score${score.lastest ? " lastest" : ""}">
+      <span class="nick">${score.nick}</span>
+      <span class="points">${score.points}</span>
+	 </div>`).join("")	 
+	}
+	function updateScores(scores){
+		scoreshook.innerHTML = buildScores(scores);
+	}
+	async function refresh(){
+		let uploadedScores = await get("highscores");
+		console.log(uploadedScores);
+		updateScores(uploadedScores);
+	}
+	document.querySelector("#refresh").addEventListener("click",refresh);
+	socket.on("update",updateScores);
+	refresh();
+	</script>
+</body>
+
+</html>
